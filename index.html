@@ -20,7 +20,7 @@
     <div class="loading-overlay" id="loader">
         <div class="text-center bg-white p-4 rounded-3 shadow">
             <div class="spinner-border text-success" role="status"></div>
-            <p class="mt-2 fw-bold text-success">Guardando en la nube...</p>
+            <p class="mt-2 fw-bold text-success">Procesando...</p>
         </div>
     </div>
 
@@ -95,6 +95,25 @@
                             <button type="submit" class="btn btn-success w-100 py-2 fw-bold">PUBLICAR REPORTE</button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalFoto" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content bg-dark border-0">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title text-white"><i class="bi bi-image"></i> Vista Detallada</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center p-0">
+                    <img id="img-gran-vista" src="" class="img-fluid" style="max-height: 80vh;">
+                </div>
+                <div class="modal-footer border-0 justify-content-center">
+                    <a id="btn-descargar" href="#" target="_blank" class="btn btn-warning fw-bold">
+                        <i class="bi bi-download"></i> ABRIR / GUARDAR
+                    </a>
                 </div>
             </div>
         </div>

@@ -31,22 +31,108 @@ L.control.layers({ "Callejero (OSM)": osm, "Modo Oscuro": cartoDark, "Satélite"
 
 // --- 3. CONTROLES UI ---
 
-// A) Geocodificador
+// A) Geocodificador (LocationIQ - VERSIÓN UNIVERSAL BLINDADA)
+const LOCATIONIQ_KEY = 'pk.456d00c2197439585e98d99de30e6025'; 
+
 const geocoder = L.Control.geocoder({
-    geocoder: L.Control.Geocoder.photon({
-        geocodingQueryParams: { countrycode: 'MX', lon: -93.1160, lat: 16.7537 }
-    }),
+    // Objeto simple para máxima compatibilidad
+    geocoder: {
+        geocode: function(query, cb, context) {
+            const url = new URL('https://api.locationiq.com/v1/search.php');
+            url.searchParams.append('key', LOCATIONIQ_KEY);
+            url.searchParams.append('q', query);
+            url.searchParams.append('format', 'json');
+            url.searchParams.append('limit', '5');
+            url.searchParams.append('countrycodes', 'mx');
+            url.searchParams.append('viewbox', '-93.35,16.70,-93.00,16.85'); 
+            url.searchParams.append('bounded', '1');
+
+            // Retornamos la promesa para que el plugin espere la respuesta
+            return fetch(url)
+                .then(r => {
+                    if (!r.ok) throw new Error("Error en respuesta");
+                    return r.json();
+                })
+                .then(data => {
+                    let results = [];
+                    if (Array.isArray(data)) {
+                        results = data.map(function(item) {
+                            let bbox = null;
+                            if (item.boundingbox && item.boundingbox.length === 4) {
+                                bbox = L.latLngBounds(
+                                    [parseFloat(item.boundingbox[0]), parseFloat(item.boundingbox[2])],
+                                    [parseFloat(item.boundingbox[1]), parseFloat(item.boundingbox[3])]
+                                );
+                            }
+                            return {
+                                name: item.display_name,
+                                center: L.latLng(item.lat, item.lon),
+                                bbox: bbox,
+                                properties: item
+                            };
+                        });
+                    }
+                    // Si existe el callback, lo usamos (retro-compatibilidad)
+                    if (typeof cb === 'function') cb.call(context || window, results);
+                    // Retornamos el array para la Promesa (compatibilidad moderna)
+                    return results;
+                })
+                .catch(err => {
+                    // En caso de error, devolvemos array vacío para no romper la UI
+                    if (typeof cb === 'function') cb.call(context || window, []);
+                    return [];
+                });
+        },
+
+        suggest: function(query, cb, context) {
+            const url = new URL('https://api.locationiq.com/v1/autocomplete.php');
+            url.searchParams.append('key', LOCATIONIQ_KEY);
+            url.searchParams.append('q', query);
+            url.searchParams.append('limit', '5');
+            url.searchParams.append('countrycodes', 'mx');
+
+            return fetch(url)
+                .then(r => {
+                    if (!r.ok) throw new Error("Error en sugerencias");
+                    return r.json();
+                })
+                .then(data => {
+                    let results = [];
+                    if (Array.isArray(data)) {
+                        results = data.map(function(item) {
+                            return {
+                                name: item.display_name,
+                                properties: item
+                            };
+                        });
+                    }
+                    if (typeof cb === 'function') cb.call(context || window, results);
+                    return results;
+                })
+                .catch(err => {
+                    if (typeof cb === 'function') cb.call(context || window, []);
+                    return [];
+                });
+        }
+    },
     collapsed: false,
-    placeholder: "🔍 Buscar en Tuxtla...",
+    placeholder: "🔍 Buscar dirección exacta...",
     position: 'topleft',
-    suggestMinLength: 3,
-    suggestTimeout: 250
-}).on('markgeocode', function(e) {
+    suggestMinLength: 3, // Espera a que escribas 3 letras
+    suggestTimeout: 300, // Espera un poco más antes de buscar (evita errores 429)
+    defaultMarkGeocode: false 
+})
+.on('markgeocode', function(e) {
     const center = e.geocode.center;
-    map.setView(center, 17);
-    marcarPunto(center);
-    document.querySelector('.leaflet-control-geocoder-alternatives').innerHTML = '';
-}).addTo(map);
+    if (center) {
+        map.setView(center, 18);
+        marcarPunto(center);
+    }
+    // Limpieza segura del contenedor de sugerencias
+    const container = document.querySelector('.leaflet-control-geocoder-alternatives');
+    if(container) container.innerHTML = '';
+})
+.addTo(map);
 
 // B) Zoom
 L.control.zoom({ position: 'topleft' }).addTo(map);
@@ -109,11 +195,10 @@ function marcarPunto(latlng) {
     document.getElementById('lng').value = latlng.lng;
 }
 
-// --- FUNCIÓN DE LIMPIEZA SEGURA ---
+// Limpieza segura de ruta
 function limpiarRutaActual() {
     if (routingControl) {
         try {
-            // Vaciamos puntos antes de remover para evitar errores de consola
             routingControl.setWaypoints([]); 
             map.removeControl(routingControl);
         } catch (error) {
@@ -123,29 +208,24 @@ function limpiarRutaActual() {
     }
 }
 
-// --- FUNCIÓN DE CÁLCULO DE RUTA (ESPAÑOL FORZADO) ---
+// Cálculo de ruta (Español)
 function calcularRuta(latDest, lngDest) {
-    // 1. Limpieza
     limpiarRutaActual();
-
-    // 2. Ubicación
     map.locate({setView: false, enableHighAccuracy: true});
 
-    // 3. Ubicación Encontrada
     map.once('locationfound', (e) => {
         limpiarRutaActual();
 
-        // CAMBIO AQUÍ: Agregamos language: 'es' al router interno
         const routerOSRM = L.Routing.osrmv1({
             serviceUrl: 'https://router.project-osrm.org/route/v1',
             profile: 'driving',
-            language: 'es' // Forzamos español en la petición al servidor
+            language: 'es'
         });
 
         routingControl = L.Routing.control({
             waypoints: [L.latLng(e.latlng), L.latLng(latDest, lngDest)],
             router: routerOSRM,
-            language: 'es', // Forzamos español en el control visual
+            language: 'es',
             createMarker: () => null, 
             lineOptions: { styles: [{color: '#198754', opacity: 1, weight: 5}] },
             addWaypoints: false,
@@ -154,27 +234,34 @@ function calcularRuta(latDest, lngDest) {
             show: true
         }).addTo(map);
 
-        // Manejo de errores traducido
         routingControl.on('routingerror', function(err) {
             console.error("Error OSRM:", err);
-            
             let mensaje = "No se pudo calcular la ruta.";
             if(err.error && (err.error.status === -1 || err.error.status === undefined)) {
                 mensaje += " El servidor de mapas está saturado. Intenta de nuevo en unos segundos.";
             } else {
                 mensaje += " Verifica tu conexión a internet.";
             }
-            
             alert(mensaje);
             limpiarRutaActual();
         });
     });
     
-    // 4. Error GPS
     map.once('locationerror', (e) => {
         alert("No pudimos acceder a tu ubicación GPS. Por favor, activa la ubicación.");
     });
 }
+
+// Visor de Foto Grande
+window.verFotoGrande = function(url) {
+    const modalImg = document.getElementById('img-gran-vista');
+    const btnDescargar = document.getElementById('btn-descargar');
+    modalImg.src = url;
+    btnDescargar.href = url;
+    const modalFoto = new bootstrap.Modal(document.getElementById('modalFoto'));
+    modalFoto.show();
+}
+
 
 // --- 5. GESTIÓN DE FOTO ---
 document.getElementById('foto').addEventListener('change', function(e) {
@@ -278,7 +365,10 @@ function crearMarcadorFinal(d) {
         <div style="text-align:center; width:200px;">
             <span class="badge" style="background:${color}">${d.tipo.toUpperCase()}</span><br>
             <strong style="font-size:1.1em">${d.especie}</strong><br>
-            <img src="${d.foto_url}" class="popup-img" alt="Foto" style="max-height:120px; object-fit:cover;">
+            <img src="${d.foto_url}" class="popup-img" alt="Foto" 
+                 style="max-height:120px; object-fit:cover;"
+                 onclick="verFotoGrande('${d.foto_url}')" 
+                 title="Clic para ampliar">
             <div class="mt-2 text-start small">
                 <b>Raza:</b> ${d.raza || 'N/A'}<br>
                 <b>Señas:</b> ${d.senas || 'Sin descripción'}<br>
@@ -293,4 +383,27 @@ function crearMarcadorFinal(d) {
     L.marker([d.lat, d.lng], { icon: icon }).addTo(map).bindPopup(content);
 }
 
+// --- 8. LEYENDA (SIMBOLOGÍA) ---
+const legend = L.control({ position: 'bottomright' });
+
+legend.onAdd = function (map) {
+    const div = L.DomUtil.create('div', 'info legend');
+    div.innerHTML = '<h6>Simbología</h6>';
+
+    for (const key in simbolos) {
+        const color = simbolos[key];
+        const label = key.charAt(0).toUpperCase() + key.slice(1);
+        
+        div.innerHTML += `
+            <div class="legend-item">
+                <i style="background:${color}"></i>
+                <span>${label}</span>
+            </div>
+        `;
+    }
+    return div;
+};
+legend.addTo(map);
+
+// Inicializar
 cargarReportes();
