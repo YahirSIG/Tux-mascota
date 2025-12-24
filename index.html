@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -18,7 +20,7 @@
     <div class="loading-overlay" id="loader">
         <div class="text-center bg-white p-4 rounded-3 shadow">
             <div class="spinner-border text-success" role="status"></div>
-            <p class="mt-2 fw-bold text-success">Procesando reporte...</p>
+            <p class="mt-2 fw-bold text-success">Guardando en la nube...</p>
         </div>
     </div>
 
@@ -75,8 +77,8 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-bold small">Foto</label>
-                            <input type="file" id="foto" class="form-control" accept="image/*" capture="environment" required>
+                            <label class="form-label fw-bold small">Foto (Cámara o Galería)</label>
+                            <input type="file" id="foto" class="form-control" accept="image/*" required>
                             <div id="preview-container" class="mt-2 text-center d-none">
                                 <img id="img-preview" src="" class="img-thumbnail" style="max-height: 150px;">
                             </div>
