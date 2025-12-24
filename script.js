@@ -35,7 +35,6 @@ L.control.layers({ "Callejero (OSM)": osm, "Modo Oscuro": cartoDark, "Satélite"
 const LOCATIONIQ_KEY = 'pk.456d00c2197439585e98d99de30e6025'; 
 
 const geocoder = L.Control.geocoder({
-    // Objeto simple para máxima compatibilidad
     geocoder: {
         geocode: function(query, cb, context) {
             const url = new URL('https://api.locationiq.com/v1/search.php');
@@ -47,7 +46,6 @@ const geocoder = L.Control.geocoder({
             url.searchParams.append('viewbox', '-93.35,16.70,-93.00,16.85'); 
             url.searchParams.append('bounded', '1');
 
-            // Retornamos la promesa para que el plugin espere la respuesta
             return fetch(url)
                 .then(r => {
                     if (!r.ok) throw new Error("Error en respuesta");
@@ -72,13 +70,10 @@ const geocoder = L.Control.geocoder({
                             };
                         });
                     }
-                    // Si existe el callback, lo usamos (retro-compatibilidad)
                     if (typeof cb === 'function') cb.call(context || window, results);
-                    // Retornamos el array para la Promesa (compatibilidad moderna)
                     return results;
                 })
                 .catch(err => {
-                    // En caso de error, devolvemos array vacío para no romper la UI
                     if (typeof cb === 'function') cb.call(context || window, []);
                     return [];
                 });
@@ -116,10 +111,10 @@ const geocoder = L.Control.geocoder({
         }
     },
     collapsed: false,
-    placeholder: "🔍 Buscar dirección exacta...",
+    placeholder: "🔍 Buscar dirección...",
     position: 'topleft',
-    suggestMinLength: 3, // Espera a que escribas 3 letras
-    suggestTimeout: 300, // Espera un poco más antes de buscar (evita errores 429)
+    suggestMinLength: 3,
+    suggestTimeout: 300,
     defaultMarkGeocode: false 
 })
 .on('markgeocode', function(e) {
@@ -128,7 +123,6 @@ const geocoder = L.Control.geocoder({
         map.setView(center, 18);
         marcarPunto(center);
     }
-    // Limpieza segura del contenedor de sugerencias
     const container = document.querySelector('.leaflet-control-geocoder-alternatives');
     if(container) container.innerHTML = '';
 })
