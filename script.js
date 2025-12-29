@@ -15,22 +15,23 @@ const map = L.map('map', {
     zoom: 13,
     minZoom: 10,
     layers: [osm], 
-    zoomControl: false, 
+    zoomControl: false, // Control manual
     maxBounds: limitesChiapas,
-    maxBoundsViscosity: 1.0
+    maxBoundsViscosity: 1.0,
+    tap: false // Corrección para doble tap en móviles antiguos
 });
 
 L.control.layers({ "Callejero": osm, "Oscuro": cartoDark, "Satélite": satelite }).addTo(map);
 
-// --- 3. CONTROLES (Espaciados) ---
+// --- 3. CONTROLES DE UI ---
 
-// A) Buscador
+// A) Buscador (Nominatim)
 L.Control.geocoder({
     geocoder: L.Control.Geocoder.nominatim({
         geocodingQueryParams: { countrycodes: 'mx', viewbox: '-93.35,16.70,-93.00,16.85', bounded: 1 }
     }),
     collapsed: false,
-    placeholder: "🔍 Buscar sitio...",
+    placeholder: "🔍 Buscar...",
     position: 'topleft',
     defaultMarkGeocode: false 
 })
@@ -39,17 +40,15 @@ L.Control.geocoder({
 })
 .addTo(map);
 
-// B) Zoom
+// B) Zoom (Visible en móvil también, ajustado por CSS)
 L.control.zoom({ position: 'topleft' }).addTo(map);
 
-// C) Home
+// C) Botón HOME
 L.Control.ResetView = L.Control.extend({
     onAdd: function(map) {
         const btn = L.DomUtil.create('div', 'custom-map-control btn-home');
         btn.innerHTML = '<i class="bi bi-house-fill"></i>';
-        btn.title = "Ir a Inicio";
         L.DomEvent.disableClickPropagation(btn);
-        L.DomEvent.disableScrollPropagation(btn);
         btn.onclick = function(e) {
             e.preventDefault();
             map.setView([16.7537, -93.1160], 13);
@@ -59,14 +58,12 @@ L.Control.ResetView = L.Control.extend({
 });
 new L.Control.ResetView({ position: 'topleft' }).addTo(map);
 
-// D) Borrar Ruta
+// D) Botón BORRAR RUTA
 L.Control.ClearRoute = L.Control.extend({
     onAdd: function(map) {
         const btn = L.DomUtil.create('div', 'custom-map-control btn-clear'); 
         btn.innerHTML = '<i class="bi bi-trash3-fill"></i>';
-        btn.title = "Borrar ruta";
         L.DomEvent.disableClickPropagation(btn);
-        L.DomEvent.disableScrollPropagation(btn);
         btn.onclick = function(e) {
             e.preventDefault();
             limpiarRutaActual(); 
@@ -82,8 +79,11 @@ let routingControl = null;
 let markerTemp;
 let archivoFotoSeleccionado = null;
 
+// Click en mapa
 map.on('click', (e) => {
+    // Evitar poner punto si se toca un control
     if (e.originalEvent.target.closest('.leaflet-control') || e.originalEvent.target.closest('.custom-map-control')) return;
+
     if (markerTemp) map.removeLayer(markerTemp);
     markerTemp = L.marker(e.latlng, { draggable: true }).addTo(map)
         .bindPopup("<b>Ubicación seleccionada</b>").openPopup();
@@ -106,11 +106,16 @@ function calcularRuta(latDest, lngDest) {
 
     map.once('locationfound', (e) => {
         document.getElementById('loader').style.display = 'none';
+
+        // Detectar si es móvil (ancho menor a 768px)
+        const esMovil = window.innerWidth < 768;
+
         const routerOSRM = L.Routing.osrmv1({
             serviceUrl: 'https://router.project-osrm.org/route/v1',
             profile: 'driving',
             language: 'es'
         });
+
         routingControl = L.Routing.control({
             waypoints: [L.latLng(e.latlng), L.latLng(latDest, lngDest)],
             router: routerOSRM,
@@ -120,17 +125,18 @@ function calcularRuta(latDest, lngDest) {
             addWaypoints: false,
             draggableWaypoints: false,
             fitSelectedRoutes: true,
-            show: true 
+            // AQUÍ ESTÁ EL ARREGLO: Si es móvil, show es false (no muestra texto)
+            show: !esMovil 
         }).addTo(map);
     });
     
     map.once('locationerror', () => {
         document.getElementById('loader').style.display = 'none';
-        alert("Activa tu GPS.");
+        alert("No se pudo obtener tu ubicación GPS.");
     });
 }
 
-// --- 5. CARGAR Y MOSTRAR REPORTES ---
+// --- 5. REPORTES ---
 async function cargarReportes() {
     const { data } = await clienteSupabase.from('reportes_mascotas').select('*');
     if (data) data.forEach(d => crearMarcadorFinal(d));
@@ -140,29 +146,25 @@ function crearMarcadorFinal(d) {
     const color = simbolos[d.tipo] || "#333";
     const icon = L.divIcon({
         className: 'custom-icon',
-        html: `<div style="background:${color}; width:16px; height:16px; border-radius:50%; border:2px solid white; box-shadow:0 0 5px rgba(0,0,0,0.5);"></div>`,
-        iconSize: [16, 16],
+        html: `<div style="background:${color}; width:14px; height:14px; border-radius:50%; border:2px solid white; box-shadow:0 0 4px rgba(0,0,0,0.5);"></div>`,
+        iconSize: [14, 14],
         popupAnchor: [0, -10]
     });
 
-    // AQUÍ ESTÁ EL CAMBIO: Agregamos d.senas (Descripción)
+    // Contenido HTML optimizado para móvil
     const content = `
-        <div style="text-align:center; width:220px;">
-            <span class="badge" style="background:${color}; color:white;">${d.tipo.toUpperCase()}</span><br>
-            <strong style="font-size:1.1em; display:block; margin-top:5px;">${d.especie}</strong>
-            <img src="${d.foto_url}" class="popup-img" style="height:110px;" onclick="verFotoGrande('${d.foto_url}')">
+        <div style="text-align:center;">
+            <span class="badge" style="background:${color}; font-size:10px;">${d.tipo.toUpperCase()}</span>
+            <div style="font-weight:bold; font-size:14px; margin:4px 0;">${d.especie}</div>
+            <img src="${d.foto_url}" class="popup-img" onclick="verFotoGrande('${d.foto_url}')">
             
-            <div class="mt-2 text-start small border p-2 rounded bg-light text-dark">
-                <b>Raza:</b> ${d.raza || 'No especificada'}<br>
-                <div style="margin: 4px 0;">
-                    <b>Descripción:</b><br> 
-                    <span class="text-muted">${d.senas || 'Sin descripción detallada.'}</span>
-                </div>
-                <hr style="margin:5px 0;">
-                <b>Contacto:</b> <strong>${d.contacto}</strong>
+            <div style="text-align:left; font-size:11px; margin-top:5px; background:#f8f9fa; padding:5px; border-radius:4px;">
+                ${d.raza ? `<b>Raza:</b> ${d.raza}<br>` : ''}
+                <b>Detalle:</b> ${d.senas || 'Sin descripción'}<br>
+                <b>Tel:</b> ${d.contacto}
             </div>
             
-            <button class="btn btn-success btn-sm w-100 mt-2" onclick="calcularRuta(${d.lat}, ${d.lng})">
+            <button class="btn btn-success btn-sm w-100 mt-2" style="font-weight:bold; font-size:12px;" onclick="calcularRuta(${d.lat}, ${d.lng})">
                 <i class="bi bi-cursor-fill"></i> CÓMO LLEGAR
             </button>
         </div>`;
@@ -170,7 +172,7 @@ function crearMarcadorFinal(d) {
     L.marker([d.lat, d.lng], { icon }).addTo(map).bindPopup(content);
 }
 
-// --- 6. MODALES Y FORMULARIO ---
+// --- 6. FORMULARIOS Y MODALES ---
 window.verFotoGrande = function(url) {
     document.getElementById('img-gran-vista').src = url;
     document.getElementById('btn-descargar').href = url;
@@ -193,7 +195,7 @@ document.getElementById('formMascota').addEventListener('submit', async function
     e.preventDefault();
     const lat = document.getElementById('lat').value;
     const lng = document.getElementById('lng').value;
-    if (!lat || !lng) return alert("Selecciona ubicación en el mapa.");
+    if (!lat || !lng) return alert("Falta ubicación en el mapa.");
     if (!archivoFotoSeleccionado) return alert("Falta la foto.");
 
     document.getElementById('loader').style.display = 'flex';
@@ -206,7 +208,7 @@ document.getElementById('formMascota').addEventListener('submit', async function
             tipo: document.getElementById('tipo').value,
             especie: document.getElementById('especie').value,
             raza: document.getElementById('raza').value,
-            senas: document.getElementById('senas').value, // Aquí se guarda la descripción
+            senas: document.getElementById('senas').value,
             contacto: document.getElementById('contacto').value,
             lat: parseFloat(lat),
             lng: parseFloat(lng),
