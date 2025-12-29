@@ -4,7 +4,6 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const clienteSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // --- 2. MAPA ---
-// Definimos capas
 const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OSM' });
 const cartoDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© CartoDB' });
 const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles © Esri' });
@@ -22,19 +21,20 @@ const map = L.map('map', {
     tap: false
 });
 
-// Control de Capas (Top Right - Por defecto)
+// Capas (Arriba Derecha)
 L.control.layers({ "Callejero": osm, "Oscuro": cartoDark, "Satélite": satelite }, null, { position: 'topright' }).addTo(map);
 
-// --- 3. CONTROLES IZQUIERDOS (Ordenados) ---
+// --- 3. CONTROLES IZQUIERDOS ---
+// Usamos 'topleft' para todos, el CSS .leaflet-top se encarga del espaciado
 
-// A) Buscador (Top Left)
+// A) Buscador
 L.Control.geocoder({
     geocoder: L.Control.Geocoder.nominatim({
         geocodingQueryParams: { countrycodes: 'mx', viewbox: '-93.35,16.70,-93.00,16.85', bounded: 1 }
     }),
     collapsed: false,
     placeholder: "🔍 Buscar...",
-    position: 'topleft', // Fijo a la izquierda
+    position: 'topleft', 
     defaultMarkGeocode: false 
 })
 .on('markgeocode', function(e) {
@@ -42,7 +42,7 @@ L.Control.geocoder({
 })
 .addTo(map);
 
-// B) Zoom (Debajo del buscador)
+// B) Zoom
 L.control.zoom({ position: 'topleft' }).addTo(map);
 
 // C) Botón Home
@@ -57,7 +57,7 @@ L.Control.ResetView = L.Control.extend({
 });
 new L.Control.ResetView({ position: 'topleft' }).addTo(map);
 
-// D) Botón Borrar
+// D) Botón Borrar Ruta
 L.Control.ClearRoute = L.Control.extend({
     onAdd: function(map) {
         const btn = L.DomUtil.create('div', 'custom-map-control btn-clear'); 
@@ -69,14 +69,16 @@ L.Control.ClearRoute = L.Control.extend({
 });
 new L.Control.ClearRoute({ position: 'topleft' }).addTo(map);
 
-// --- 4. LÓGICA ---
+// --- 4. LÓGICA MAPA ---
 const simbolos = { perdido: "#dc3545", avistamiento: "#ffc107", maltrato: "#6f42c1" };
 let routingControl = null; 
 let markerTemp;
 let archivoFotoSeleccionado = null;
 
 map.on('click', (e) => {
+    // Si toca un control, no ponemos marcador
     if (e.originalEvent.target.closest('.leaflet-control') || e.originalEvent.target.closest('.custom-map-control')) return;
+    
     if (markerTemp) map.removeLayer(markerTemp);
     markerTemp = L.marker(e.latlng, { draggable: true }).addTo(map)
         .bindPopup("<b>Ubicación seleccionada</b>").openPopup();
@@ -99,7 +101,6 @@ function calcularRuta(latDest, lngDest) {
 
     map.once('locationfound', (e) => {
         document.getElementById('loader').style.display = 'none';
-        const esMovil = window.innerWidth < 768;
 
         const routerOSRM = L.Routing.osrmv1({
             serviceUrl: 'https://router.project-osrm.org/route/v1',
@@ -116,15 +117,14 @@ function calcularRuta(latDest, lngDest) {
             addWaypoints: false,
             draggableWaypoints: false,
             fitSelectedRoutes: true,
-            // TRUCO: Posición 'bottomleft' para que no empuje los controles de arriba
-            position: 'bottomleft', 
-            show: !esMovil // Oculta texto en móvil
+            position: 'topright', // En PC va arriba derecha. En MÓVIL el CSS lo mueve a fijo abajo.
+            show: true // SIEMPRE TRUE. El CSS oculta los detalles en móvil.
         }).addTo(map);
     });
     
     map.once('locationerror', () => {
         document.getElementById('loader').style.display = 'none';
-        alert("Activa tu GPS.");
+        alert("GPS Inactivo.");
     });
 }
 
@@ -150,13 +150,11 @@ function crearMarcadorFinal(d) {
         <div class="popup-body text-center">
             <div style="font-weight:bold; font-size:14px; margin-bottom:5px;">${d.especie}</div>
             <img src="${d.foto_url}" class="popup-img" onclick="verFotoGrande('${d.foto_url}')">
-            
             <div class="text-start small bg-light p-2 rounded border mt-2">
                 ${d.raza ? `<b>Raza:</b> ${d.raza}<br>` : ''}
                 <b>Detalle:</b> ${d.senas || '---'}<br>
                 <b>Tel:</b> ${d.contacto}
             </div>
-            
             <button class="btn btn-success btn-sm w-100 mt-2 fw-bold" onclick="calcularRuta(${d.lat}, ${d.lng})">
                 <i class="bi bi-geo-alt-fill"></i> IR AQUÍ
             </button>
@@ -165,7 +163,7 @@ function crearMarcadorFinal(d) {
     L.marker([d.lat, d.lng], { icon }).addTo(map).bindPopup(content);
 }
 
-// --- 6. FORMULARIOS ---
+// --- 6. UTILIDADES ---
 window.verFotoGrande = (url) => {
     document.getElementById('img-gran-vista').src = url;
     document.getElementById('btn-descargar').href = url;
@@ -195,7 +193,6 @@ document.getElementById('formMascota').addEventListener('submit', async function
     try {
         const nombreArchivo = `${Date.now()}_${archivoFotoSeleccionado.name}`;
         const { data: dataUrl } = await subirFoto(nombreArchivo, archivoFotoSeleccionado);
-        
         await clienteSupabase.from('reportes_mascotas').insert([{
             tipo: document.getElementById('tipo').value,
             especie: document.getElementById('especie').value,
@@ -206,12 +203,11 @@ document.getElementById('formMascota').addEventListener('submit', async function
             lng: parseFloat(lng),
             foto_url: dataUrl.publicUrl
         }]);
-
-        alert("Guardado");
+        alert("Enviado");
         window.location.reload(); 
     } catch (error) {
         console.error(error);
-        alert("Error");
+        alert("Error al guardar");
         document.getElementById('loader').style.display = 'none';
     }
 });
@@ -221,7 +217,7 @@ async function subirFoto(nombre, archivo) {
     return clienteSupabase.storage.from('fotos_mascotas').getPublicUrl(nombre);
 }
 
-// --- 7. LEYENDA (Carga inmediata) ---
+// --- 7. LEYENDA ---
 const legend = L.control({ position: 'bottomright' });
 legend.onAdd = function () {
     const div = L.DomUtil.create('div', 'legend');
@@ -237,5 +233,4 @@ legend.onAdd = function () {
 };
 legend.addTo(map);
 
-// Inicializar
 cargarReportes();

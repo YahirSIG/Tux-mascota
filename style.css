@@ -1,42 +1,52 @@
-/* --- CONFIGURACIÓN GENERAL --- */
+/* --- CONFIGURACIÓN GENERAL (BLINDAJE DE SCROLL) --- */
 body, html { 
     height: 100%; 
+    width: 100%;
     margin: 0; 
-    overflow: hidden; 
+    padding: 0;
+    overflow: hidden; /* CRÍTICO: Evita que la página haga scroll */
+    position: fixed;  /* CRÍTICO: Fija el documento para que no "baile" con el teclado */
     font-family: 'Segoe UI', sans-serif; 
     background-color: #f8f9fa;
 }
 
+/* El mapa ocupa el resto de la pantalla y no se mueve */
 #map {
-    height: calc(100vh - 56px);
+    position: absolute; /* Absoluto respecto al body fijo */
+    top: 56px; /* Altura exacta del header */
+    bottom: 0;
+    left: 0;
+    right: 0;
     width: 100%;
-    margin-top: 56px;
     z-index: 1;
 }
 
-/* --- 1. BARRA DE BÚSQUEDA (GEOCODER) --- */
+/* --- CONTROL DE POSICIÓN DE LOS ELEMENTOS (SOLUCIÓN AL SOLAPAMIENTO) --- */
+/* Forzamos a que los controles de Leaflet respeten el espacio del header */
+.leaflet-top {
+    top: 10px !important; /* Espacio de seguridad extra */
+}
+.leaflet-bottom {
+    bottom: 20px !important;
+}
+
+/* --- 1. BARRA DE BÚSQUEDA --- */
 .leaflet-control-geocoder {
     background: white;
     border-radius: 8px !important;
     box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
     border: none !important;
-    margin-top: 15px !important;
     margin-left: 10px !important;
     z-index: 1000;
-    transition: all 0.3s ease;
 }
-
 .leaflet-control-geocoder-form input {
     width: 100% !important;
     border: none !important;
-    padding: 12px !important;
+    padding: 10px !important;
     font-size: 14px;
     outline: none;
     border-radius: 8px;
-    color: #333;
 }
-
-/* Resultados de búsqueda */
 .leaflet-control-geocoder-alternatives {
     width: 100%;
     max-height: 200px;
@@ -55,147 +65,129 @@ body, html {
     cursor: pointer;
 }
 
-/* --- 2. CONTROLES FLOTANTES (Zoom, Home, Basura) --- */
-/* Zoom */
+/* --- 2. CONTROLES IZQUIERDOS (Zoom, Home, Borrar) --- */
 .leaflet-control-zoom {
     border: none !important;
     box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
-    margin-top: 15px !important;
+    margin-top: 10px !important;
     margin-left: 10px !important;
-    margin-bottom: 0 !important;
 }
 .leaflet-control-zoom a {
-    width: 38px !important;
-    height: 38px !important;
-    line-height: 38px !important;
+    width: 40px !important;
+    height: 40px !important;
+    line-height: 40px !important;
     border-radius: 8px !important;
     color: #444 !important;
+    font-size: 18px !important;
 }
 
 /* Botones personalizados */
 .custom-map-control {
     background-color: white;
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
     border-radius: 8px !important;
     box-shadow: 0 2px 8px rgba(0,0,0,0.25);
     cursor: pointer;
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-top: 15px !important; /* Separación consistente */
+    margin-top: 10px !important; /* Espaciado uniforme */
     margin-left: 10px !important;
-    font-size: 18px;
-    color: #444;
+    font-size: 20px;
+    color: #555;
     position: relative;
     z-index: 900;
 }
-.custom-map-control:active { background-color: #f0f0f0; transform: scale(0.95); }
+.custom-map-control:active { background-color: #f0f0f0; }
 .btn-home { color: #0d6efd; }
 .btn-clear { color: #dc3545; }
 
-/* --- 3. PANEL DE CAPAS (Ajuste para que no brinque) --- */
-.leaflet-control-layers {
+/* --- 3. PANEL DE RUTA (SOLUCIÓN MÓVIL) --- */
+.leaflet-routing-container {
+    background-color: white;
+    padding: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    border-radius: 10px;
+    font-size: 12px;
     border: none !important;
-    border-radius: 8px !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
-    margin-top: 15px !important;
+    
+    /* Configuración Base (Desktop) */
+    width: 280px !important;
+    max-height: 40vh;
+    overflow-y: auto;
     margin-right: 10px !important;
+    margin-top: 10px !important;
 }
 
 /* --- 4. POPUPS --- */
-.leaflet-popup-content-wrapper {
-    border-radius: 12px;
-    padding: 0;
-    overflow: hidden;
-}
-.leaflet-popup-content {
-    margin: 0;
-    width: 240px !important;
-}
-.popup-header {
-    padding: 10px;
-    text-align: center;
-    color: white;
-    font-weight: bold;
-    text-transform: uppercase;
-    font-size: 12px;
-}
-.popup-body {
-    padding: 10px;
-}
-.popup-img { 
-    width: 100%; 
-    height: 120px; 
-    object-fit: cover; 
-    border-radius: 6px; 
-    margin-bottom: 8px;
-    background-color: #f0f0f0; /* Color de fondo mientras carga */
-}
+.leaflet-popup-content-wrapper { border-radius: 12px; padding: 0; overflow: hidden; }
+.leaflet-popup-content { margin: 0; width: 220px !important; }
+.popup-header { padding: 8px; text-align: center; color: white; font-weight: bold; text-transform: uppercase; font-size: 12px; }
+.popup-body { padding: 10px; }
+.popup-img { width: 100%; height: 110px; object-fit: cover; border-radius: 6px; margin-bottom: 8px; background: #eee; }
 
-/* --- 5. LEYENDA (SIMBOLOGÍA) - ESTABILIZADA --- */
+/* --- 5. SIMBOLOGÍA --- */
 .legend {
     background: white;
-    padding: 10px 12px;
+    padding: 8px 10px;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    font-size: 12px;
+    font-size: 11px;
     margin-right: 10px;
-    margin-bottom: 30px;
-    min-width: 100px; /* Ancho mínimo para evitar redimensionamiento */
+    margin-bottom: 25px;
+    min-width: 90px;
 }
-.legend h6 { 
-    margin: 0 0 8px; 
-    font-weight: 800; 
-    color: #198754; 
-    text-align: center; 
-    font-size: 11px; 
-    text-transform: uppercase;
-}
-.legend-item { display: flex; align-items: center; margin-bottom: 6px; }
-.legend i { 
-    width: 12px; 
-    height: 12px; 
-    display: inline-block; 
-    margin-right: 8px; 
-    border-radius: 50%; 
-    border: 1px solid rgba(0,0,0,0.1);
-    flex-shrink: 0; /* Evita que el círculo se aplaste */
-}
+.legend h6 { margin: 0 0 5px; font-weight: 800; color: #198754; text-align: center; font-size: 10px; text-transform: uppercase; }
+.legend-item { display: flex; align-items: center; margin-bottom: 4px; }
+.legend i { width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); }
 
 /* --- 6. LOADER --- */
 .loading-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(255,255,255,0.9); backdrop-filter: blur(4px);
-    display: none; z-index: 9999;
-    justify-content: center; align-items: center;
-    flex-direction: column;
+    background: rgba(255,255,255,0.85); backdrop-filter: blur(4px);
+    display: none; z-index: 10000;
+    justify-content: center; align-items: center; flex-direction: column;
 }
 
 /* =========================================
    REGLAS CRÍTICAS PARA MÓVIL
    ========================================= */
 @media (max-width: 576px) {
-    /* Buscador adaptable */
+    /* 1. Buscador flexible */
     .leaflet-control-geocoder { 
         width: calc(100vw - 80px) !important;
-        max-width: 300px;
+        max-width: 320px;
     }
     
-    /* Panel de Ruta: ELIMINADO DEL FLUJO EN MÓVIL */
-    /* Esto evita que empuje otros controles */
+    /* 2. RUTA EN MÓVIL: Estilo "Tarjeta Flotante Inferior" */
     .leaflet-routing-container {
-        display: none !important;
-        width: 0 !important;
-        height: 0 !important;
+        position: fixed !important; /* Sacarlo del flujo normal */
+        bottom: 80px !important; /* Arriba de la atribución/simbología */
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: 90% !important;
+        max-width: 350px !important;
+        max-height: 90px !important; /* Solo resumen */
         margin: 0 !important;
-        padding: 0 !important;
-        border: none !important;
+        z-index: 2000 !important;
+        overflow: hidden !important;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    
+    /* Ocultar la tabla de pasos (Gire a la derecha...) para ahorrar espacio */
+    .leaflet-routing-alt table { display: none !important; }
+    
+    /* Mostrar solo el resumen (Tiempo y Distancia) grande */
+    .leaflet-routing-alt h2, .leaflet-routing-alt h3 {
+        font-size: 14px !important;
+        margin: 0 !important;
+        text-align: center;
+        color: #198754;
     }
 
-    /* Ajuste de popup para pantalla pequeña */
-    .leaflet-popup-content { width: 200px !important; }
-    
-    /* Leyenda compacta */
-    .legend { margin-bottom: 35px !important; }
+    /* 3. Simbología Compacta */
+    .legend { margin-bottom: 25px !important; }
 }
