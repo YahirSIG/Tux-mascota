@@ -21,13 +21,9 @@ const map = L.map('map', {
     tap: false
 });
 
-// Capas (Arriba Derecha)
 L.control.layers({ "Callejero": osm, "Oscuro": cartoDark, "Satélite": satelite }, null, { position: 'topright' }).addTo(map);
 
 // --- 3. CONTROLES IZQUIERDOS ---
-// Usamos 'topleft' para todos, el CSS .leaflet-top se encarga del espaciado
-
-// A) Buscador
 L.Control.geocoder({
     geocoder: L.Control.Geocoder.nominatim({
         geocodingQueryParams: { countrycodes: 'mx', viewbox: '-93.35,16.70,-93.00,16.85', bounded: 1 }
@@ -42,10 +38,8 @@ L.Control.geocoder({
 })
 .addTo(map);
 
-// B) Zoom
 L.control.zoom({ position: 'topleft' }).addTo(map);
 
-// C) Botón Home
 L.Control.ResetView = L.Control.extend({
     onAdd: function(map) {
         const btn = L.DomUtil.create('div', 'custom-map-control btn-home');
@@ -57,7 +51,6 @@ L.Control.ResetView = L.Control.extend({
 });
 new L.Control.ResetView({ position: 'topleft' }).addTo(map);
 
-// D) Botón Borrar Ruta
 L.Control.ClearRoute = L.Control.extend({
     onAdd: function(map) {
         const btn = L.DomUtil.create('div', 'custom-map-control btn-clear'); 
@@ -76,9 +69,7 @@ let markerTemp;
 let archivoFotoSeleccionado = null;
 
 map.on('click', (e) => {
-    // Si toca un control, no ponemos marcador
     if (e.originalEvent.target.closest('.leaflet-control') || e.originalEvent.target.closest('.custom-map-control')) return;
-    
     if (markerTemp) map.removeLayer(markerTemp);
     markerTemp = L.marker(e.latlng, { draggable: true }).addTo(map)
         .bindPopup("<b>Ubicación seleccionada</b>").openPopup();
@@ -117,8 +108,8 @@ function calcularRuta(latDest, lngDest) {
             addWaypoints: false,
             draggableWaypoints: false,
             fitSelectedRoutes: true,
-            position: 'topright', // En PC va arriba derecha. En MÓVIL el CSS lo mueve a fijo abajo.
-            show: true // SIEMPRE TRUE. El CSS oculta los detalles en móvil.
+            position: 'topright', 
+            show: true 
         }).addTo(map);
     });
     
@@ -163,7 +154,100 @@ function crearMarcadorFinal(d) {
     L.marker([d.lat, d.lng], { icon }).addTo(map).bindPopup(content);
 }
 
-// --- 6. UTILIDADES ---
+// --- 6. DASHBOARD / ESTADÍSTICAS (NUEVO) ---
+let chartTipoInstance = null;
+let chartEspecieInstance = null;
+
+window.abrirDashboard = async function() {
+    // 1. Mostrar Modal
+    const modal = new bootstrap.Modal(document.getElementById('modalDashboard'));
+    modal.show();
+
+    // 2. Obtener datos frescos
+    const { data, error } = await clienteSupabase
+        .from('reportes_mascotas')
+        .select('tipo, especie');
+    
+    if (error || !data) return console.error("Error stats", error);
+
+    // 3. Procesar datos (Contar)
+    const conteoTipos = { perdido: 0, avistamiento: 0, maltrato: 0 };
+    const conteoEspecies = {};
+
+    data.forEach(d => {
+        // Tipos
+        if (conteoTipos[d.tipo] !== undefined) conteoTipos[d.tipo]++;
+        
+        // Especies (Normalizar texto: "Perro" = "perro")
+        const esp = d.especie ? d.especie.toLowerCase().trim() : 'otro';
+        conteoEspecies[esp] = (conteoEspecies[esp] || 0) + 1;
+    });
+
+    // 4. Renderizar Gráficas
+    renderChartTipo(conteoTipos);
+    renderChartEspecie(conteoEspecies);
+};
+
+function renderChartTipo(datos) {
+    const ctx = document.getElementById('chartTipo').getContext('2d');
+    
+    if (chartTipoInstance) chartTipoInstance.destroy();
+
+    chartTipoInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Perdido', 'Avistamiento', 'Maltrato'],
+            datasets: [{
+                data: [datos.perdido, datos.avistamiento, datos.maltrato],
+                backgroundColor: ['#dc3545', '#ffc107', '#6f42c1'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+}
+
+function renderChartEspecie(datosObj) {
+    const ctx = document.getElementById('chartEspecie').getContext('2d');
+    
+    // Convertir objeto a arrays ordenados
+    const labels = Object.keys(datosObj);
+    const data = Object.values(datosObj);
+
+    if (chartEspecieInstance) chartEspecieInstance.destroy();
+
+    chartEspecieInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels.map(l => l.charAt(0).toUpperCase() + l.slice(1)), // Capitalizar
+            datasets: [{
+                label: 'Reportes',
+                data: data,
+                backgroundColor: '#198754',
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 } }
+            },
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+}
+
+
+// --- 7. UTILIDADES ---
 window.verFotoGrande = (url) => {
     document.getElementById('img-gran-vista').src = url;
     document.getElementById('btn-descargar').href = url;
@@ -217,7 +301,7 @@ async function subirFoto(nombre, archivo) {
     return clienteSupabase.storage.from('fotos_mascotas').getPublicUrl(nombre);
 }
 
-// --- 7. LEYENDA ---
+// --- 8. LEYENDA ---
 const legend = L.control({ position: 'bottomright' });
 legend.onAdd = function () {
     const div = L.DomUtil.create('div', 'legend');

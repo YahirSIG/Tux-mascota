@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <link rel="stylesheet" href="style.css">
 </head>
@@ -27,9 +28,14 @@
             <a class="navbar-brand fw-bold" href="#">
                 <i class="bi bi-paws-fill"></i> Tux-mascotas
             </a>
-            <button class="btn btn-warning btn-sm fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalReporte">
-                <i class="bi bi-camera-fill"></i> REPORTAR
-            </button>
+            <div>
+                <button class="btn btn-light btn-sm fw-bold shadow-sm me-2 text-success" onclick="abrirDashboard()">
+                    <i class="bi bi-bar-chart-fill"></i> <span class="d-none d-sm-inline">STATS</span>
+                </button>
+                <button class="btn btn-warning btn-sm fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalReporte">
+                    <i class="bi bi-camera-fill"></i> REPORTAR
+                </button>
+            </div>
         </div>
     </nav>
 
@@ -54,7 +60,7 @@
                         </div>
                         <div class="row g-2 mb-3">
                             <div class="col-6">
-                                <input type="text" id="especie" class="form-control" placeholder="Especie" required>
+                                <input type="text" id="especie" class="form-control" placeholder="Especie (Perro...)" required>
                             </div>
                             <div class="col-6">
                                 <input type="text" id="raza" class="form-control" placeholder="Raza">
@@ -81,6 +87,44 @@
                             <button type="submit" class="btn btn-success w-100 fw-bold">ENVIAR</button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalDashboard" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="bi bi-graph-up"></i> Actividad Reciente</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body bg-light">
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <div class="card shadow-sm border-0 h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title text-center text-muted fw-bold">REPORTE POR ESTATUS</h6>
+                                    <div style="height: 250px; position: relative;">
+                                        <canvas id="chartTipo"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <div class="card shadow-sm border-0 h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title text-center text-muted fw-bold">ESPECIES MÁS REPORTADAS</h6>
+                                    <div style="height: 250px; position: relative;">
+                                        <canvas id="chartEspecie"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0 justify-content-center">
+                    <small class="text-muted">Datos actualizados en tiempo real</small>
                 </div>
             </div>
         </div>
