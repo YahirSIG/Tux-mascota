@@ -2,11 +2,11 @@
 body, html { 
     height: 100%; 
     margin: 0; 
-    overflow: hidden; /* Evita scroll en toda la página */
+    overflow: hidden; 
     font-family: 'Segoe UI', sans-serif; 
+    background-color: #f8f9fa;
 }
 
-/* El mapa ocupa todo el alto menos la barra de navegación (56px) */
 #map {
     height: calc(100vh - 56px);
     width: 100%;
@@ -14,28 +14,29 @@ body, html {
     z-index: 1;
 }
 
-/* --- 1. BARRA DE BÚSQUEDA --- */
+/* --- 1. BARRA DE BÚSQUEDA (GEOCODER) --- */
 .leaflet-control-geocoder {
     background: white;
     border-radius: 8px !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
     border: none !important;
     margin-top: 15px !important;
     margin-left: 10px !important;
     z-index: 1000;
+    transition: all 0.3s ease;
 }
 
 .leaflet-control-geocoder-form input {
     width: 100% !important;
     border: none !important;
-    padding: 10px 12px !important;
+    padding: 12px !important;
     font-size: 14px;
     outline: none;
     border-radius: 8px;
     color: #333;
 }
 
-/* Resultados del buscador */
+/* Resultados de búsqueda */
 .leaflet-control-geocoder-alternatives {
     width: 100%;
     max-height: 200px;
@@ -48,135 +49,153 @@ body, html {
     padding: 0;
 }
 .leaflet-control-geocoder-alternatives li {
-    padding: 10px;
+    padding: 12px;
     font-size: 13px;
     border-bottom: 1px solid #f0f0f0;
     cursor: pointer;
 }
 
-/* --- 2. CONTROLES DE MAPA (BOTONES) --- */
+/* --- 2. CONTROLES FLOTANTES (Zoom, Home, Basura) --- */
 /* Zoom */
 .leaflet-control-zoom {
     border: none !important;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2) !important;
-    margin-top: 10px !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+    margin-top: 15px !important;
     margin-left: 10px !important;
     margin-bottom: 0 !important;
 }
 .leaflet-control-zoom a {
-    width: 34px !important;
-    height: 34px !important;
-    line-height: 34px !important;
-    border-radius: 6px !important;
+    width: 38px !important;
+    height: 38px !important;
+    line-height: 38px !important;
+    border-radius: 8px !important;
     color: #444 !important;
 }
 
-/* Botones Personalizados (Casa y Borrar) */
+/* Botones personalizados */
 .custom-map-control {
     background-color: white;
-    width: 34px;
-    height: 34px;
+    width: 38px;
+    height: 38px;
     border-radius: 8px !important;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
     cursor: pointer;
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-top: 12px !important; /* Separación vertical vital */
+    margin-top: 15px !important; /* Separación consistente */
     margin-left: 10px !important;
     font-size: 18px;
     color: #444;
+    position: relative;
+    z-index: 900;
 }
-.custom-map-control:active { background-color: #f0f0f0; }
+.custom-map-control:active { background-color: #f0f0f0; transform: scale(0.95); }
 .btn-home { color: #0d6efd; }
 .btn-clear { color: #dc3545; }
 
-/* --- 3. PANEL DE RUTA (Escritorio) --- */
-.leaflet-routing-container {
-    background-color: white;
-    padding: 10px;
-    max-height: 50vh;
-    overflow-y: auto;
-    width: 280px !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    border-radius: 10px;
-    margin-right: 15px !important;
-    margin-top: 15px !important;
-    font-size: 12px;
+/* --- 3. PANEL DE CAPAS (Ajuste para que no brinque) --- */
+.leaflet-control-layers {
     border: none !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+    margin-top: 15px !important;
+    margin-right: 10px !important;
 }
 
-/* --- 4. POPUPS (Ventanas de info) --- */
+/* --- 4. POPUPS --- */
 .leaflet-popup-content-wrapper {
-    border-radius: 10px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    border-radius: 12px;
+    padding: 0;
+    overflow: hidden;
 }
 .leaflet-popup-content {
-    margin: 10px;
-    width: 200px !important; /* Ancho controlado */
+    margin: 0;
+    width: 240px !important;
+}
+.popup-header {
+    padding: 10px;
+    text-align: center;
+    color: white;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 12px;
+}
+.popup-body {
+    padding: 10px;
 }
 .popup-img { 
     width: 100%; 
-    height: 100px; /* Altura fija para evitar saltos */
+    height: 120px; 
     object-fit: cover; 
     border-radius: 6px; 
-    margin-top: 5px; 
-    cursor: zoom-in;
+    margin-bottom: 8px;
+    background-color: #f0f0f0; /* Color de fondo mientras carga */
 }
 
-/* --- 5. LEYENDA --- */
+/* --- 5. LEYENDA (SIMBOLOGÍA) - ESTABILIZADA --- */
 .legend {
     background: white;
-    padding: 8px 12px;
+    padding: 10px 12px;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
     font-size: 12px;
     margin-right: 10px;
-    margin-bottom: 25px; /* Separado del borde inferior */
+    margin-bottom: 30px;
+    min-width: 100px; /* Ancho mínimo para evitar redimensionamiento */
 }
-.legend h6 { margin: 0 0 5px; font-weight: bold; color: #198754; text-align: center; font-size: 11px; }
-.legend i { width: 10px; height: 10px; float: left; margin-right: 6px; border-radius: 50%; margin-top: 2px; }
-.legend-item { display: flex; align-items: center; margin-bottom: 4px; }
+.legend h6 { 
+    margin: 0 0 8px; 
+    font-weight: 800; 
+    color: #198754; 
+    text-align: center; 
+    font-size: 11px; 
+    text-transform: uppercase;
+}
+.legend-item { display: flex; align-items: center; margin-bottom: 6px; }
+.legend i { 
+    width: 12px; 
+    height: 12px; 
+    display: inline-block; 
+    margin-right: 8px; 
+    border-radius: 50%; 
+    border: 1px solid rgba(0,0,0,0.1);
+    flex-shrink: 0; /* Evita que el círculo se aplaste */
+}
 
-/* --- 6. LOADING --- */
+/* --- 6. LOADER --- */
 .loading-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(255,255,255,0.85); backdrop-filter: blur(3px);
+    background: rgba(255,255,255,0.9); backdrop-filter: blur(4px);
     display: none; z-index: 9999;
     justify-content: center; align-items: center;
+    flex-direction: column;
 }
 
 /* =========================================
-   CORRECCIONES CRÍTICAS PARA MÓVIL
+   REGLAS CRÍTICAS PARA MÓVIL
    ========================================= */
 @media (max-width: 576px) {
-    /* Buscador: Ancho adaptable y seguro */
+    /* Buscador adaptable */
     .leaflet-control-geocoder { 
-        width: calc(100vw - 70px) !important; /* Restamos espacio de botones */
-        max-width: 280px;
-        margin-top: 15px !important;
-        margin-left: 10px !important;
+        width: calc(100vw - 80px) !important;
+        max-width: 300px;
     }
     
-    /* Panel de Ruta: OCULTO EN MÓVIL (Solo se ve la línea en el mapa) */
-    /* Esto arregla el bug de que tape toda la pantalla */
+    /* Panel de Ruta: ELIMINADO DEL FLUJO EN MÓVIL */
+    /* Esto evita que empuje otros controles */
     .leaflet-routing-container {
         display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
     }
 
-    /* Popup: Ajuste para que no se salga de pantalla */
-    .leaflet-popup-content {
-        width: 180px !important;
-    }
-    .popup-img { height: 90px; }
-
-    /* Leyenda: Más pequeña */
-    .legend { margin-bottom: 30px !important; padding: 5px 8px; }
+    /* Ajuste de popup para pantalla pequeña */
+    .leaflet-popup-content { width: 200px !important; }
     
-    /* Botones: Un poco más grandes para dedos */
-    .custom-map-control, .leaflet-control-zoom a {
-        width: 38px !important;
-        height: 38px !important;
-        line-height: 38px !important;
-    }
+    /* Leyenda compacta */
+    .legend { margin-bottom: 35px !important; }
 }

@@ -4,6 +4,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const clienteSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // --- 2. MAPA ---
+// Definimos capas
 const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OSM' });
 const cartoDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© CartoDB' });
 const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles © Esri' });
@@ -15,24 +16,25 @@ const map = L.map('map', {
     zoom: 13,
     minZoom: 10,
     layers: [osm], 
-    zoomControl: false, // Control manual
+    zoomControl: false, 
     maxBounds: limitesChiapas,
     maxBoundsViscosity: 1.0,
-    tap: false // Corrección para doble tap en móviles antiguos
+    tap: false
 });
 
-L.control.layers({ "Callejero": osm, "Oscuro": cartoDark, "Satélite": satelite }).addTo(map);
+// Control de Capas (Top Right - Por defecto)
+L.control.layers({ "Callejero": osm, "Oscuro": cartoDark, "Satélite": satelite }, null, { position: 'topright' }).addTo(map);
 
-// --- 3. CONTROLES DE UI ---
+// --- 3. CONTROLES IZQUIERDOS (Ordenados) ---
 
-// A) Buscador (Nominatim)
+// A) Buscador (Top Left)
 L.Control.geocoder({
     geocoder: L.Control.Geocoder.nominatim({
         geocodingQueryParams: { countrycodes: 'mx', viewbox: '-93.35,16.70,-93.00,16.85', bounded: 1 }
     }),
     collapsed: false,
     placeholder: "🔍 Buscar...",
-    position: 'topleft',
+    position: 'topleft', // Fijo a la izquierda
     defaultMarkGeocode: false 
 })
 .on('markgeocode', function(e) {
@@ -40,50 +42,41 @@ L.Control.geocoder({
 })
 .addTo(map);
 
-// B) Zoom (Visible en móvil también, ajustado por CSS)
+// B) Zoom (Debajo del buscador)
 L.control.zoom({ position: 'topleft' }).addTo(map);
 
-// C) Botón HOME
+// C) Botón Home
 L.Control.ResetView = L.Control.extend({
     onAdd: function(map) {
         const btn = L.DomUtil.create('div', 'custom-map-control btn-home');
         btn.innerHTML = '<i class="bi bi-house-fill"></i>';
         L.DomEvent.disableClickPropagation(btn);
-        btn.onclick = function(e) {
-            e.preventDefault();
-            map.setView([16.7537, -93.1160], 13);
-        }
+        btn.onclick = (e) => { e.preventDefault(); map.setView([16.7537, -93.1160], 13); };
         return btn;
     }
 });
 new L.Control.ResetView({ position: 'topleft' }).addTo(map);
 
-// D) Botón BORRAR RUTA
+// D) Botón Borrar
 L.Control.ClearRoute = L.Control.extend({
     onAdd: function(map) {
         const btn = L.DomUtil.create('div', 'custom-map-control btn-clear'); 
         btn.innerHTML = '<i class="bi bi-trash3-fill"></i>';
         L.DomEvent.disableClickPropagation(btn);
-        btn.onclick = function(e) {
-            e.preventDefault();
-            limpiarRutaActual(); 
-        }
+        btn.onclick = (e) => { e.preventDefault(); limpiarRutaActual(); };
         return btn;
     }
 });
 new L.Control.ClearRoute({ position: 'topleft' }).addTo(map);
 
-// --- 4. LÓGICA MAPA ---
-const simbolos = { perdido: "#ff0000", avistamiento: "#ff8c00", maltrato: "#800080" };
+// --- 4. LÓGICA ---
+const simbolos = { perdido: "#dc3545", avistamiento: "#ffc107", maltrato: "#6f42c1" };
 let routingControl = null; 
 let markerTemp;
 let archivoFotoSeleccionado = null;
 
-// Click en mapa
 map.on('click', (e) => {
-    // Evitar poner punto si se toca un control
     if (e.originalEvent.target.closest('.leaflet-control') || e.originalEvent.target.closest('.custom-map-control')) return;
-
     if (markerTemp) map.removeLayer(markerTemp);
     markerTemp = L.marker(e.latlng, { draggable: true }).addTo(map)
         .bindPopup("<b>Ubicación seleccionada</b>").openPopup();
@@ -106,8 +99,6 @@ function calcularRuta(latDest, lngDest) {
 
     map.once('locationfound', (e) => {
         document.getElementById('loader').style.display = 'none';
-
-        // Detectar si es móvil (ancho menor a 768px)
         const esMovil = window.innerWidth < 768;
 
         const routerOSRM = L.Routing.osrmv1({
@@ -125,14 +116,15 @@ function calcularRuta(latDest, lngDest) {
             addWaypoints: false,
             draggableWaypoints: false,
             fitSelectedRoutes: true,
-            // AQUÍ ESTÁ EL ARREGLO: Si es móvil, show es false (no muestra texto)
-            show: !esMovil 
+            // TRUCO: Posición 'bottomleft' para que no empuje los controles de arriba
+            position: 'bottomleft', 
+            show: !esMovil // Oculta texto en móvil
         }).addTo(map);
     });
     
     map.once('locationerror', () => {
         document.getElementById('loader').style.display = 'none';
-        alert("No se pudo obtener tu ubicación GPS.");
+        alert("Activa tu GPS.");
     });
 }
 
@@ -146,38 +138,39 @@ function crearMarcadorFinal(d) {
     const color = simbolos[d.tipo] || "#333";
     const icon = L.divIcon({
         className: 'custom-icon',
-        html: `<div style="background:${color}; width:14px; height:14px; border-radius:50%; border:2px solid white; box-shadow:0 0 4px rgba(0,0,0,0.5);"></div>`,
-        iconSize: [14, 14],
+        html: `<div style="background:${color}; width:16px; height:16px; border-radius:50%; border:2px solid white; box-shadow:0 0 5px rgba(0,0,0,0.5);"></div>`,
+        iconSize: [16, 16],
         popupAnchor: [0, -10]
     });
 
-    // Contenido HTML optimizado para móvil
     const content = `
-        <div style="text-align:center;">
-            <span class="badge" style="background:${color}; font-size:10px;">${d.tipo.toUpperCase()}</span>
-            <div style="font-weight:bold; font-size:14px; margin:4px 0;">${d.especie}</div>
+        <div class="popup-header" style="background:${color}">
+            ${d.tipo.toUpperCase()}
+        </div>
+        <div class="popup-body text-center">
+            <div style="font-weight:bold; font-size:14px; margin-bottom:5px;">${d.especie}</div>
             <img src="${d.foto_url}" class="popup-img" onclick="verFotoGrande('${d.foto_url}')">
             
-            <div style="text-align:left; font-size:11px; margin-top:5px; background:#f8f9fa; padding:5px; border-radius:4px;">
+            <div class="text-start small bg-light p-2 rounded border mt-2">
                 ${d.raza ? `<b>Raza:</b> ${d.raza}<br>` : ''}
-                <b>Detalle:</b> ${d.senas || 'Sin descripción'}<br>
+                <b>Detalle:</b> ${d.senas || '---'}<br>
                 <b>Tel:</b> ${d.contacto}
             </div>
             
-            <button class="btn btn-success btn-sm w-100 mt-2" style="font-weight:bold; font-size:12px;" onclick="calcularRuta(${d.lat}, ${d.lng})">
-                <i class="bi bi-cursor-fill"></i> CÓMO LLEGAR
+            <button class="btn btn-success btn-sm w-100 mt-2 fw-bold" onclick="calcularRuta(${d.lat}, ${d.lng})">
+                <i class="bi bi-geo-alt-fill"></i> IR AQUÍ
             </button>
         </div>`;
     
     L.marker([d.lat, d.lng], { icon }).addTo(map).bindPopup(content);
 }
 
-// --- 6. FORMULARIOS Y MODALES ---
-window.verFotoGrande = function(url) {
+// --- 6. FORMULARIOS ---
+window.verFotoGrande = (url) => {
     document.getElementById('img-gran-vista').src = url;
     document.getElementById('btn-descargar').href = url;
     new bootstrap.Modal(document.getElementById('modalFoto')).show();
-}
+};
 
 document.getElementById('foto').addEventListener('change', function(e) {
     if (e.target.files[0]) {
@@ -195,11 +188,10 @@ document.getElementById('formMascota').addEventListener('submit', async function
     e.preventDefault();
     const lat = document.getElementById('lat').value;
     const lng = document.getElementById('lng').value;
-    if (!lat || !lng) return alert("Falta ubicación en el mapa.");
-    if (!archivoFotoSeleccionado) return alert("Falta la foto.");
+    if (!lat || !lng) return alert("Falta ubicación.");
+    if (!archivoFotoSeleccionado) return alert("Falta foto.");
 
     document.getElementById('loader').style.display = 'flex';
-
     try {
         const nombreArchivo = `${Date.now()}_${archivoFotoSeleccionado.name}`;
         const { data: dataUrl } = await subirFoto(nombreArchivo, archivoFotoSeleccionado);
@@ -215,11 +207,11 @@ document.getElementById('formMascota').addEventListener('submit', async function
             foto_url: dataUrl.publicUrl
         }]);
 
-        alert("¡Reporte guardado!");
+        alert("Guardado");
         window.location.reload(); 
     } catch (error) {
         console.error(error);
-        alert("Error al guardar.");
+        alert("Error");
         document.getElementById('loader').style.display = 'none';
     }
 });
@@ -229,7 +221,7 @@ async function subirFoto(nombre, archivo) {
     return clienteSupabase.storage.from('fotos_mascotas').getPublicUrl(nombre);
 }
 
-// --- 7. LEYENDA ---
+// --- 7. LEYENDA (Carga inmediata) ---
 const legend = L.control({ position: 'bottomright' });
 legend.onAdd = function () {
     const div = L.DomUtil.create('div', 'legend');
@@ -245,4 +237,5 @@ legend.onAdd = function () {
 };
 legend.addTo(map);
 
+// Inicializar
 cargarReportes();
