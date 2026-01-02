@@ -1,7 +1,20 @@
-// --- 1. CONFIGURACIÓN SUPABASE ---
-const SUPABASE_URL = 'https://qxmsttnbfwgrernnriei.supabase.co'; 
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4bXN0dG5iZndncmVybm5yaWVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1MDc5NjUsImV4cCI6MjA3OTA4Mzk2NX0.kLII1ulgwzYtIuBslYtnoPmkgUFiu2lphf0CHXirqUE';
-const clienteSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let clienteSupabase = null;
+
+async function iniciarSupabase() {
+    const res = await fetch("http://localhost:8000/config/supabase");
+    const config = await res.json();
+
+    clienteSupabase = window.supabase.createClient(
+        config.url,
+        config.key
+    );
+
+    // Ya que Supabase existe, arrancamos la app
+    cargarReportes();
+}
+
+// INICIAR TODO
+iniciarSupabase();
 
 // --- 2. MAPA ---
 const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OSM' });
@@ -317,4 +330,4 @@ legend.onAdd = function () {
 };
 legend.addTo(map);
 
-cargarReportes();
+//cargarReportes();
