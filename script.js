@@ -1,7 +1,7 @@
 let clienteSupabase = null;
 
 async function iniciarSupabase() {
-    const res = await fetch("http://127.0.0.1:8000/config/supabase");
+    const res = await fetch("https://fastapi-lspe.onrender.com/config/supabase");
     const config = await res.json();
 
     clienteSupabase = window.supabase.createClient(
